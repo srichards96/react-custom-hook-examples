@@ -218,4 +218,101 @@ describe("useArray", () => {
     });
     expect(result.current.value).toEqual([100, 20, 3]);
   });
+
+  it("should return a memoized object with memoized properties", () => {
+    const { result, rerender } = renderHook(() => useArray([3, 20, 100]));
+
+    // All function properties should never change
+    const firstResult = result.current;
+    // Top-level object and `value` property will change if `value` changes
+    let latestResult = result.current;
+
+    const noFunctionPropertiesChanged = () => {
+      expect(firstResult.setValue).toBe(result.current.setValue);
+      expect(firstResult.push).toBe(result.current.push);
+      expect(firstResult.pop).toBe(result.current.pop);
+      expect(firstResult.shift).toBe(result.current.shift);
+      expect(firstResult.unshift).toBe(result.current.unshift);
+      expect(firstResult.insertAt).toBe(result.current.insertAt);
+      expect(firstResult.removeAt).toBe(result.current.removeAt);
+      expect(firstResult.fill).toBe(result.current.fill);
+      expect(firstResult.reverse).toBe(result.current.reverse);
+      expect(firstResult.sort).toBe(result.current.sort);
+    };
+
+    // Should not change on rerender
+    rerender();
+    expect(latestResult).toBe(result.current);
+    expect(latestResult.value).toBe(result.current.value);
+    noFunctionPropertiesChanged();
+
+    // Changing `initialValue` after first render should not change anything
+    latestResult = result.current;
+    rerender([]);
+    expect(latestResult).toBe(result.current);
+    expect(latestResult.value).toBe(result.current.value);
+    noFunctionPropertiesChanged();
+
+    // All function properties should change top-level object and `value` property
+    // But not any function properties
+    latestResult = result.current;
+    act(() => result.current.setValue([1, 2, 3]));
+    expect(latestResult).not.toBe(result.current);
+    expect(latestResult.value).not.toBe(result.current.value);
+    noFunctionPropertiesChanged();
+
+    latestResult = result.current;
+    act(() => result.current.push(1));
+    expect(latestResult).not.toBe(result.current);
+    expect(latestResult.value).not.toBe(result.current.value);
+    noFunctionPropertiesChanged();
+
+    latestResult = result.current;
+    act(() => result.current.pop());
+    expect(latestResult).not.toBe(result.current);
+    expect(latestResult.value).not.toBe(result.current.value);
+    noFunctionPropertiesChanged();
+
+    latestResult = result.current;
+    act(() => result.current.shift());
+    expect(latestResult).not.toBe(result.current);
+    expect(latestResult.value).not.toBe(result.current.value);
+    noFunctionPropertiesChanged();
+
+    latestResult = result.current;
+    act(() => result.current.unshift(1));
+    expect(latestResult).not.toBe(result.current);
+    expect(latestResult.value).not.toBe(result.current.value);
+    noFunctionPropertiesChanged();
+
+    latestResult = result.current;
+    act(() => result.current.insertAt(1, 1));
+    expect(latestResult).not.toBe(result.current);
+    expect(latestResult.value).not.toBe(result.current.value);
+    noFunctionPropertiesChanged();
+
+    latestResult = result.current;
+    act(() => result.current.removeAt(1, 1));
+    expect(latestResult).not.toBe(result.current);
+    expect(latestResult.value).not.toBe(result.current.value);
+    noFunctionPropertiesChanged();
+
+    latestResult = result.current;
+    act(() => result.current.fill(0));
+    expect(latestResult).not.toBe(result.current);
+    expect(latestResult.value).not.toBe(result.current.value);
+    noFunctionPropertiesChanged();
+
+    latestResult = result.current;
+    act(() => result.current.reverse());
+    expect(latestResult).not.toBe(result.current);
+    expect(latestResult.value).not.toBe(result.current.value);
+    noFunctionPropertiesChanged();
+
+    latestResult = result.current;
+    act(() => result.current.sort());
+    expect(latestResult).not.toBe(result.current);
+    expect(latestResult.value).not.toBe(result.current.value);
+    noFunctionPropertiesChanged();
+  });
 });

@@ -19,15 +19,12 @@ export function useArray<T>(initialState: T[] | (() => T[])): UseArrayReturn<T>;
 export function useArray<T = undefined[]>(): UseArrayReturn<T>;
 
 /**
- * Custom hook for using state which is an array.
- *
- * Includes methods for
- * @returns
+ * Custom hook for using state which is an array
  */
 export function useArray<T>(
-  initialValue?: T[] | (() => T[]),
+  initialState?: T[] | (() => T[]),
 ): UseArrayReturn<T> {
-  const [value, setValue] = useState(initialValue ?? []);
+  const [value, setValue] = useState(initialState ?? []);
 
   const push: UseArrayReturn<T>["push"] = useCallback((...items) => {
     setValue((x) => [...x, ...items]);
