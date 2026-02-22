@@ -108,7 +108,7 @@ describe("debounce", () => {
     expect(debouncedCallback.isPending()).toEqual(false);
   });
 
-  test("that `clear` function property cancels call, if one is pending", () => {
+  test("that `cancel` function property cancels call, if one is pending", () => {
     const callback = vi.fn();
 
     const debouncedCallback = debounce(callback, 200);
