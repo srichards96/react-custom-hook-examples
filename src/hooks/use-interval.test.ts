@@ -1,7 +1,7 @@
 import {
   afterAll,
-  afterEach,
   beforeAll,
+  beforeEach,
   describe,
   expect,
   it,
@@ -21,7 +21,7 @@ describe("useInterval", () => {
     vi.useRealTimers();
   });
 
-  afterEach(() => {
+  beforeEach(() => {
     vi.resetAllMocks();
   });
 
