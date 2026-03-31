@@ -1,13 +1,11 @@
 import { beforeEach, describe, expect, it, test } from "vitest";
-import type { Serializable } from "../types/serializable";
-import { useLocalStorageState } from "./use-local-storage-state";
+import {
+  useLocalStorageState,
+  type UseLocalStorageStateProps,
+} from "./use-local-storage-state";
 import { renderHook } from "@testing-library/react";
 import z from "zod";
 import { act } from "react";
-
-type UseLocalStorageStateProps<T extends Serializable> = Parameters<
-  typeof useLocalStorageState<T>
->;
 
 describe("useLocalStorageState", () => {
   beforeEach(() => {
@@ -19,8 +17,8 @@ describe("useLocalStorageState", () => {
     const defaultValue = 10;
 
     const { result } = renderHook(
-      (props: UseLocalStorageStateProps<number> = [key, defaultValue]) =>
-        useLocalStorageState(...props),
+      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
+        useLocalStorageState(props),
     );
 
     const [value] = result.current;
@@ -34,8 +32,8 @@ describe("useLocalStorageState", () => {
     localStorage.setItem(key, JSON.stringify(20));
 
     const { result } = renderHook(
-      (props: UseLocalStorageStateProps<number> = [key, defaultValue]) =>
-        useLocalStorageState(...props),
+      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
+        useLocalStorageState(props),
     );
 
     const [value] = result.current;
@@ -50,8 +48,8 @@ describe("useLocalStorageState", () => {
     localStorage.setItem(key, JSON.stringify("not a number..."));
 
     const { result } = renderHook(
-      (props: UseLocalStorageStateProps<number> = [key, defaultValue]) =>
-        useLocalStorageState(...props),
+      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
+        useLocalStorageState(props),
     );
 
     // `value` is a string, even though TypeScript thinks it's a number...
@@ -69,12 +67,12 @@ describe("useLocalStorageState", () => {
 
     const { result } = renderHook(
       (
-        props: UseLocalStorageStateProps<number> = [
+        props: UseLocalStorageStateProps<number> = {
           key,
           defaultValue,
-          schema.parse,
-        ],
-      ) => useLocalStorageState(...props),
+          parseFn: schema.parse,
+        },
+      ) => useLocalStorageState(props),
     );
 
     // Value at key made the `parseFn` throw, so `defaultValue` was returned instead
@@ -90,8 +88,8 @@ describe("useLocalStorageState", () => {
     localStorage.setItem(key, "{{ a: 10 }");
 
     const { result } = renderHook(
-      (props: UseLocalStorageStateProps<number> = [key, defaultValue]) =>
-        useLocalStorageState(...props),
+      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
+        useLocalStorageState(props),
     );
 
     // Value at key was malformed JSON, so `defaultValue` should be returned
@@ -99,70 +97,239 @@ describe("useLocalStorageState", () => {
     expect(value).toBe(defaultValue);
   });
 
-  it("should return `defaultValue` if the value at `key` is parsed as an object type (only primitives are supported)", () => {
-    const key1 = "key1";
-    const key2 = "key2";
-    const defaultValue = 10;
+  it("should return `defaultValue` if the value at `key` is parsed as an object type, and no `equalityComparer` prop was provided", () => {
+    type Obj = { a: number; b: number };
+    type Arr = number[];
+    const keyObj = "key1";
+    const keyArr = "key2";
+    const defaultValueObj: Obj = { a: 10, b: 10 };
+    const defaultValueArr: Arr = [1, 2, 3];
 
-    localStorage.setItem(key1, JSON.stringify({ a: 10 }));
-    localStorage.setItem(key2, JSON.stringify([1, 2, 3]));
+    const valueAtKeyObj = { a: 50, b: 50 };
+    const valueAtKeyArr = [7, 8, 9];
+
+    localStorage.setItem(keyObj, JSON.stringify(valueAtKeyObj));
+    localStorage.setItem(keyArr, JSON.stringify(valueAtKeyArr));
 
     const { result: result1 } = renderHook(
       (
-        props: UseLocalStorageStateProps<number> = [
-          key1,
-          defaultValue,
-          undefined,
-        ],
-      ) => useLocalStorageState(...props),
+        props: UseLocalStorageStateProps<Obj> = {
+          key: keyObj,
+          defaultValue: defaultValueObj,
+        },
+      ) => useLocalStorageState(props),
     );
 
     // Value at key was an object, so `defaultValue` should be returned
     const [value1] = result1.current;
-    expect(value1).toBe(defaultValue);
+    expect(value1).toBe(defaultValueObj);
 
     const { result: result2 } = renderHook(
-      (props: UseLocalStorageStateProps<number> = [key2, defaultValue]) =>
-        useLocalStorageState(...props),
+      (
+        props: UseLocalStorageStateProps<Arr> = {
+          key: keyArr,
+          defaultValue: defaultValueArr,
+        },
+      ) => useLocalStorageState(props),
     );
 
     // Value at key was an array, so `defaultValue` should be returned
     const [value2] = result2.current;
-    expect(value2).toBe(defaultValue);
+    expect(value2).toBe(defaultValueArr);
+  });
+
+  it("should return value at `key` if it is parsed as an object type, if an `equalityComparer` prop was provided", () => {
+    type Obj = { a: number; b: number };
+    type Arr = number[];
+    const keyObj = "keyObj";
+    const keyArr = "keyArr";
+    const defaultValueObj: Obj = { a: 10, b: 10 };
+    const defaultValueArr: Arr = [1, 2, 3];
+    const equalityComparerObj = (a: Obj, b: Obj) => a.a === b.a && a.b === b.b;
+    const equalityComparerArr = (a: Arr, b: Arr) => {
+      if (a.length !== b.length) {
+        return false;
+      }
+      for (const i in a) {
+        if (a[i] !== b[i]) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    const valueAtKeyObj = { a: 50, b: 50 };
+    const valueAtKeyArr = [7, 8, 9];
+
+    localStorage.setItem(keyObj, JSON.stringify(valueAtKeyObj));
+    localStorage.setItem(keyArr, JSON.stringify(valueAtKeyArr));
+
+    const { result: result1 } = renderHook(
+      (
+        props: UseLocalStorageStateProps<Obj> = {
+          key: keyObj,
+          defaultValue: defaultValueObj,
+          equalityComparer: equalityComparerObj,
+        },
+      ) => useLocalStorageState(props),
+    );
+
+    // Value at key was an object, so `defaultValue` should be returned
+    const [value1] = result1.current;
+    expect(value1).toEqual(valueAtKeyObj);
+    expect(value1).not.toBe(valueAtKeyObj);
+
+    const { result: result2 } = renderHook(
+      (
+        props: UseLocalStorageStateProps<Arr> = {
+          key: keyArr,
+          defaultValue: defaultValueArr,
+          equalityComparer: equalityComparerArr,
+        },
+      ) => useLocalStorageState(props),
+    );
+
+    // Value at key was an array, so `defaultValue` should be returned
+    const [value2] = result2.current;
+    expect(value2).toEqual(valueAtKeyArr);
+    expect(value2).not.toBe(valueAtKeyArr);
   });
 
   it("should update value (including in localStorage) when `setValue` is called", () => {
-    const key = "key";
-    const defaultValue = 10;
-    const newValue1 = 20;
-    const newValue2 = 30;
+    type Obj = { a: number; b: number };
+    const keyPrimitive = "keyPrimitve";
+    const defaultValuePrimitve = 10;
+    const newValuePrimitive = 20;
 
-    const { result } = renderHook(
-      (props: UseLocalStorageStateProps<number> = [key, defaultValue]) =>
-        useLocalStorageState(...props),
+    const { result: resultPrimitive } = renderHook(
+      (
+        props: UseLocalStorageStateProps<number> = {
+          key: keyPrimitive,
+          defaultValue: defaultValuePrimitve,
+        },
+      ) => useLocalStorageState(props),
     );
 
-    let [value, setValue] = result.current;
-    expect(value).toBe(defaultValue);
+    let [valuePrimitive, setValuePrimitive] = resultPrimitive.current;
+    expect(valuePrimitive).toBe(defaultValuePrimitve);
 
     // Set value
     act(() => {
-      setValue(newValue1);
+      setValuePrimitive(newValuePrimitive);
     });
-    [value, setValue] = result.current;
+    [valuePrimitive, setValuePrimitive] = resultPrimitive.current;
 
     // Should have set value, both in the hook and in localStorage
-    expect(value).toBe(newValue1);
-    expect(JSON.parse(localStorage.getItem(key)!)).toBe(newValue1);
+    expect(valuePrimitive).toBe(newValuePrimitive);
+    expect(JSON.parse(localStorage.getItem(keyPrimitive)!)).toBe(
+      newValuePrimitive,
+    );
 
-    // And again...
+    // Should work with object types (by value, not reference) if a `equalityComparer` is provided
+    // Object
+    const keyObj = "keyObj";
+    const defaultValueObj: Obj = { a: 10, b: 10 };
+    const equalityComparerObj = (a: Obj, b: Obj) => a.a === b.a && a.b === b.b;
+    const newValueObj: Obj = { a: 50, b: 50 };
+
+    const { result: resultObj } = renderHook(
+      (
+        props: UseLocalStorageStateProps<Obj> = {
+          key: keyObj,
+          defaultValue: defaultValueObj,
+          equalityComparer: equalityComparerObj,
+        },
+      ) => useLocalStorageState(props),
+    );
+
+    let [valueObj, setValueObj] = resultObj.current;
+    expect(valueObj).toBe(defaultValueObj);
+
+    // Set value
     act(() => {
-      setValue(newValue2);
+      setValueObj(newValueObj);
     });
-    [value, setValue] = result.current;
+    [valueObj, setValueObj] = resultObj.current;
 
-    expect(value).toBe(newValue2);
-    expect(JSON.parse(localStorage.getItem(key)!)).toBe(newValue2);
+    // Should have set value, both in the hook and in localStorage
+    expect(valueObj).toEqual(newValueObj);
+    expect(JSON.parse(localStorage.getItem(keyObj)!)).toEqual(newValueObj);
+
+    // Array
+    type Arr = number[];
+    const keyArr = "keyArr";
+    const defaultValueArr: Arr = [1, 2, 3];
+    const equalityComparerArr = (a: Arr, b: Arr) => {
+      if (a.length !== b.length) {
+        return false;
+      }
+      for (const i in a) {
+        if (a[i] !== b[i]) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+    const newValueArr: Arr = [7, 8, 9];
+
+    const { result: resultArr } = renderHook(
+      (
+        props: UseLocalStorageStateProps<Arr> = {
+          key: keyArr,
+          defaultValue: defaultValueArr,
+          equalityComparer: equalityComparerArr,
+        },
+      ) => useLocalStorageState(props),
+    );
+
+    let [valueArr, setValueArr] = resultArr.current;
+    expect(valueArr).toBe(defaultValueArr);
+
+    // Set value
+    act(() => {
+      setValueArr(newValueArr);
+    });
+    [valueArr, setValueArr] = resultArr.current;
+
+    // Should have set value, both in the hook and in localStorage
+    expect(valueArr).toEqual(newValueArr);
+    expect(JSON.parse(localStorage.getItem(keyArr)!)).toEqual(newValueArr);
+  });
+
+  it("should update result for all consumers (that use the same `key`) when one updates the value", () => {
+    const key = "key";
+    const defaultValue = 10;
+    const valueAtKey = 50;
+
+    const { result: result1 } = renderHook(
+      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
+        useLocalStorageState(props),
+    );
+    const { result: result2 } = renderHook(
+      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
+        useLocalStorageState(props),
+    );
+    const { result: result3 } = renderHook(
+      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
+        useLocalStorageState(props),
+    );
+
+    // All 3 should start with `defaultValue`
+    expect(result1.current[0]).toBe(defaultValue);
+    expect(result2.current[0]).toBe(defaultValue);
+    expect(result3.current[0]).toBe(defaultValue);
+
+    // Call setter of 1st hook
+    act(() => {
+      result1.current[1](valueAtKey);
+    });
+
+    // All 3 should have updated to new value
+    expect(result1.current[0]).toBe(valueAtKey);
+    expect(result2.current[0]).toBe(valueAtKey);
+    expect(result3.current[0]).toBe(valueAtKey);
   });
 
   it("should attempt to read value at new `key` when `key` changes", () => {
@@ -177,8 +344,9 @@ describe("useLocalStorageState", () => {
     localStorage.setItem(key2, JSON.stringify(value2));
 
     const { result, rerender } = renderHook(
-      (props: UseLocalStorageStateProps<number> = [key1, defaultValue]) =>
-        useLocalStorageState(...props),
+      (
+        props: UseLocalStorageStateProps<number> = { key: key1, defaultValue },
+      ) => useLocalStorageState(props),
     );
 
     // Starts on value at `key2`
@@ -186,17 +354,17 @@ describe("useLocalStorageState", () => {
     expect(value).toBe(value1);
 
     // Immediately changes to value at `key2`
-    rerender([key2, defaultValue]);
+    rerender({ key: key2, defaultValue });
     [value] = result.current;
     expect(value).toBe(value2);
 
     // Immediately changes to `defaultValue`, since no value exists at `key3`
-    rerender([key3, defaultValue]);
+    rerender({ key: key3, defaultValue });
     [value] = result.current;
     expect(value).toBe(defaultValue);
 
     // Change multiple times shouldn't have interfered with values at previous keys
-    rerender([key1, defaultValue]);
+    rerender({ key: key1, defaultValue });
     [value] = result.current;
     expect(value).toBe(value1);
   });
@@ -209,8 +377,12 @@ describe("useLocalStorageState", () => {
     const valueAtKey = 50;
 
     const { result, rerender } = renderHook(
-      (props: UseLocalStorageStateProps<number> = [key, defaultValue1]) =>
-        useLocalStorageState(...props),
+      (
+        props: UseLocalStorageStateProps<number> = {
+          key,
+          defaultValue: defaultValue1,
+        },
+      ) => useLocalStorageState(props),
     );
 
     // Starts on `defaultValue1`, since no value exists at key
@@ -218,7 +390,7 @@ describe("useLocalStorageState", () => {
     expect(value).toBe(defaultValue1);
 
     // Changes to `defaultValue2`, since no value exists at key
-    rerender([key, defaultValue2]);
+    rerender({ key, defaultValue: defaultValue2 });
     [value, setValue] = result.current;
     expect(value).toBe(defaultValue2);
 
@@ -230,7 +402,7 @@ describe("useLocalStorageState", () => {
     expect(value).toBe(valueAtKey);
 
     // Changing `defaultValue` should do nothing, since a value now exists at `key`
-    rerender([key, defaultValue3]);
+    rerender({ key, defaultValue: defaultValue3 });
     [value, setValue] = result.current;
     expect(value).toBe(valueAtKey);
   });
@@ -246,12 +418,12 @@ describe("useLocalStorageState", () => {
 
     const { result, rerender } = renderHook(
       (
-        props: UseLocalStorageStateProps<number> = [
+        props: UseLocalStorageStateProps<number> = {
           key,
           defaultValue,
-          schema1.parse,
-        ],
-      ) => useLocalStorageState(...props),
+          parseFn: schema1.parse,
+        },
+      ) => useLocalStorageState(props),
     );
 
     // Starts on `defaultValue`, since value at key fails schema parse
@@ -259,64 +431,99 @@ describe("useLocalStorageState", () => {
     expect(value).toBe(defaultValue);
 
     // Changes to value at key, since it passes the new schema parse
-    rerender([key, defaultValue, schema2.parse]);
+    rerender({ key, defaultValue, parseFn: schema2.parse });
     [value] = result.current;
     expect(value).toBe(valueAtKey);
 
     // Changes back to `defaultValue`, since value at key fails new schema parse
-    rerender([key, defaultValue, schema1.parse]);
+    rerender({ key, defaultValue, parseFn: schema1.parse });
     [value] = result.current;
     expect(value).toBe(defaultValue);
   });
 
   it("should return a memoized setter function", () => {
+    type Obj = { a: number; b: number };
     const key1 = "key1";
     const key2 = "key2";
-    const defaultValue1 = 10;
-    const defaultValue2 = 20;
-    const schema1 = z.number();
-    const schema2 = z.number();
+    const defaultValue1: Obj = { a: 10, b: 10 };
+    const defaultValue2: Obj = { a: 20, b: 20 };
+    const schema1 = z.object({ a: z.number(), b: z.number() });
+    const schema2 = z.object({ a: z.number(), b: z.number() });
+    const equalityComparer1 = (a: Obj, b: Obj) => a.a === b.a && a.b === b.b;
+    const equalityComparer2 = (a: Obj, b: Obj) => a.a === b.a && a.b === b.b;
 
     const { result, rerender } = renderHook(
       (
-        props: UseLocalStorageStateProps<number> = [
-          key1,
-          defaultValue1,
-          schema1.parse,
-        ],
-      ) => useLocalStorageState(...props),
+        props: UseLocalStorageStateProps<Obj> = {
+          key: key1,
+          defaultValue: defaultValue1,
+          parseFn: schema1.parse,
+          equalityComparer: equalityComparer1,
+        },
+      ) => useLocalStorageState(props),
     );
 
     let [, prevSetValue] = result.current;
     let [, setValue] = result.current;
 
     // Rerender with same arguments. No change
-    rerender([key1, defaultValue1, schema1.parse]);
+    rerender({
+      key: key1,
+      defaultValue: defaultValue1,
+      parseFn: schema1.parse,
+      equalityComparer: equalityComparer1,
+    });
     [, setValue] = result.current;
     expect(setValue).toBe(prevSetValue);
     [, prevSetValue] = result.current;
 
     // Rerender with different `key`. Changes
-    rerender([key2, defaultValue1, schema1.parse]);
+    rerender({
+      key: key2,
+      defaultValue: defaultValue1,
+      parseFn: schema1.parse,
+      equalityComparer: equalityComparer1,
+    });
     [, setValue] = result.current;
     expect(setValue).not.toBe(prevSetValue);
     [, prevSetValue] = result.current;
 
     // Rerender with different `defaultValue`. Changes
-    rerender([key2, defaultValue2, schema1.parse]);
+    rerender({
+      key: key2,
+      defaultValue: defaultValue2,
+      parseFn: schema1.parse,
+      equalityComparer: equalityComparer1,
+    });
     [, setValue] = result.current;
     expect(setValue).not.toBe(prevSetValue);
     [, prevSetValue] = result.current;
 
     // Rerender with different `parseFn`. Changes
-    rerender([key2, defaultValue2, schema2.parse]);
+    rerender({
+      key: key2,
+      defaultValue: defaultValue2,
+      parseFn: schema2.parse,
+      equalityComparer: equalityComparer1,
+    });
+    [, setValue] = result.current;
+    expect(setValue).not.toBe(prevSetValue);
+    [, prevSetValue] = result.current;
+
+    // Rerender with different parseFn. Changes
+    rerender({
+      key: key2,
+      defaultValue: defaultValue2,
+      parseFn: schema2.parse,
+      equalityComparer: equalityComparer2,
+    });
     [, setValue] = result.current;
     expect(setValue).not.toBe(prevSetValue);
     [, prevSetValue] = result.current;
 
     // Call `setValue`. No change
     act(() => {
-      setValue(50);
+      setValue({ a: 50, b: 50 });
     });
     [, setValue] = result.current;
     expect(setValue).toBe(prevSetValue);
