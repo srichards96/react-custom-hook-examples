@@ -298,6 +298,34 @@ describe("useLocalStorageState", () => {
     expect(JSON.parse(localStorage.getItem(keyArr)!)).toEqual(newValueArr);
   });
 
+  it("should reset value to `defaultValue` (and delete key from localStorage) when `deleteValue` is called", () => {
+    const key = "key";
+    const defaultValue = 10;
+    const valueAtKey = 50;
+
+    localStorage.setItem(key, JSON.stringify(valueAtKey));
+
+    const { result } = renderHook(
+      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
+        useLocalStorageState(props),
+    );
+
+    // Value should be value at key, which should exist
+    let [value, , deleteValue] = result.current;
+    expect(value).toBe(valueAtKey);
+    expect(localStorage.getItem(key)).not.toBeNull();
+
+    // Delete value
+    act(() => {
+      deleteValue();
+    });
+
+    // Value should be `defaultValue`, and no value should exist at key
+    [value, , deleteValue] = result.current;
+    expect(value).toBe(defaultValue);
+    expect(localStorage.getItem(key)).toBeNull();
+  });
+
   it("should update result for all consumers (that use the same `key`) when one updates the value", () => {
     const key = "key";
     const defaultValue = 10;
@@ -330,6 +358,16 @@ describe("useLocalStorageState", () => {
     expect(result1.current[0]).toBe(valueAtKey);
     expect(result2.current[0]).toBe(valueAtKey);
     expect(result3.current[0]).toBe(valueAtKey);
+
+    // Call delete of 3rd hook
+    act(() => {
+      result3.current[2]();
+    });
+
+    // All 3 should have updated to `defaultValue`
+    expect(result1.current[0]).toBe(defaultValue);
+    expect(result2.current[0]).toBe(defaultValue);
+    expect(result3.current[0]).toBe(defaultValue);
   });
 
   it("should attempt to read value at new `key` when `key` changes", () => {
@@ -441,7 +479,7 @@ describe("useLocalStorageState", () => {
     expect(value).toBe(defaultValue);
   });
 
-  it("should return a memoized setter function", () => {
+  it("should return a memoized functions", () => {
     type Obj = { a: number; b: number };
     const key1 = "key1";
     const key2 = "key2";
@@ -463,8 +501,8 @@ describe("useLocalStorageState", () => {
       ) => useLocalStorageState(props),
     );
 
-    let [, prevSetValue] = result.current;
-    let [, setValue] = result.current;
+    let [, prevSetValue, prevDeleteValue] = result.current;
+    let [, setValue, deleteValue] = result.current;
 
     // Rerender with same arguments. No change
     rerender({
@@ -473,9 +511,10 @@ describe("useLocalStorageState", () => {
       parseFn: schema1.parse,
       equalityComparer: equalityComparer1,
     });
-    [, setValue] = result.current;
+    [, setValue, deleteValue] = result.current;
     expect(setValue).toBe(prevSetValue);
-    [, prevSetValue] = result.current;
+    expect(deleteValue).toBe(prevDeleteValue);
+    [, prevSetValue, prevDeleteValue] = result.current;
 
     // Rerender with different `key`. Changes
     rerender({
@@ -484,9 +523,10 @@ describe("useLocalStorageState", () => {
       parseFn: schema1.parse,
       equalityComparer: equalityComparer1,
     });
-    [, setValue] = result.current;
+    [, setValue, deleteValue] = result.current;
     expect(setValue).not.toBe(prevSetValue);
-    [, prevSetValue] = result.current;
+    expect(deleteValue).not.toBe(prevDeleteValue);
+    [, prevSetValue, prevDeleteValue] = result.current;
 
     // Rerender with different `defaultValue`. Changes
     rerender({
@@ -495,9 +535,10 @@ describe("useLocalStorageState", () => {
       parseFn: schema1.parse,
       equalityComparer: equalityComparer1,
     });
-    [, setValue] = result.current;
+    [, setValue, deleteValue] = result.current;
     expect(setValue).not.toBe(prevSetValue);
-    [, prevSetValue] = result.current;
+    expect(deleteValue).not.toBe(prevDeleteValue);
+    [, prevSetValue, prevDeleteValue] = result.current;
 
     // Rerender with different `parseFn`. Changes
     rerender({
@@ -506,9 +547,10 @@ describe("useLocalStorageState", () => {
       parseFn: schema2.parse,
       equalityComparer: equalityComparer1,
     });
-    [, setValue] = result.current;
+    [, setValue, deleteValue] = result.current;
     expect(setValue).not.toBe(prevSetValue);
-    [, prevSetValue] = result.current;
+    expect(deleteValue).not.toBe(prevDeleteValue);
+    [, prevSetValue, prevDeleteValue] = result.current;
 
     // Rerender with different parseFn. Changes
     rerender({
@@ -517,15 +559,26 @@ describe("useLocalStorageState", () => {
       parseFn: schema2.parse,
       equalityComparer: equalityComparer2,
     });
-    [, setValue] = result.current;
+    [, setValue, deleteValue] = result.current;
     expect(setValue).not.toBe(prevSetValue);
-    [, prevSetValue] = result.current;
+    expect(deleteValue).not.toBe(prevDeleteValue);
+    [, prevSetValue, prevDeleteValue] = result.current;
 
     // Call `setValue`. No change
     act(() => {
       setValue({ a: 50, b: 50 });
     });
-    [, setValue] = result.current;
+    [, setValue, deleteValue] = result.current;
     expect(setValue).toBe(prevSetValue);
+    expect(deleteValue).toBe(prevDeleteValue);
+    [, prevSetValue, prevDeleteValue] = result.current;
+
+    // Call `deleteValue`. No change
+    act(() => {
+      setValue({ a: 50, b: 50 });
+    });
+    [, setValue, deleteValue] = result.current;
+    expect(setValue).toBe(prevSetValue);
+    expect(deleteValue).toBe(prevDeleteValue);
   });
 });

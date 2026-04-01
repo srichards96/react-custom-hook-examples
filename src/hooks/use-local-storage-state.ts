@@ -1,4 +1,4 @@
-import { useMemo, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { Serializable } from "../types/serializable";
 
 type ParseFn<T> = (value: unknown) => T;
@@ -58,35 +58,6 @@ const createGetSnapshotFn = <T extends Serializable>(
   };
 };
 
-const createSetValueFn =
-  <T extends Serializable>(
-    key: string,
-    getSnapshotFn: () => T,
-  ): StateSetter<T> =>
-  (setter) => {
-    const oldValue = getSnapshotFn();
-    const newValue = typeof setter === "function" ? setter(oldValue) : setter;
-
-    if (newValue === oldValue) {
-      return;
-    }
-
-    const oldValueString = JSON.stringify(oldValue);
-    const newValueString = JSON.stringify(newValue);
-
-    // This fires a storage event on every browser tab other than the current one
-    localStorage.setItem(key, newValueString);
-
-    // This fires a storage event on the current browser tab
-    window.dispatchEvent(
-      new StorageEvent("storage", {
-        key,
-        oldValue: oldValueString,
-        newValue: newValueString,
-      }),
-    );
-  };
-
 export type UseLocalStorageStateProps<T extends Serializable> = {
   key: string;
   defaultValue: T;
@@ -99,7 +70,7 @@ export function useLocalStorageState<T extends Serializable>({
   defaultValue,
   parseFn,
   equalityComparer,
-}: UseLocalStorageStateProps<T>): [T, StateSetter<T>] {
+}: UseLocalStorageStateProps<T>) {
   const subscribe = useMemo(() => {
     return createSubscribeFn(key);
   }, [key]);
@@ -108,12 +79,50 @@ export function useLocalStorageState<T extends Serializable>({
     return createGetSnapshotFn(key, defaultValue, parseFn, equalityComparer);
   }, [key, defaultValue, parseFn, equalityComparer]);
 
-  const setValue = useMemo(() => {
-    return createSetValueFn(key, getSnapshot);
-  }, [key, getSnapshot]);
-
   // `subscribe` and `getSnapshot` need to have stable references
   const value = useSyncExternalStore(subscribe, getSnapshot);
 
-  return [value, setValue] as const;
+  const setValue: StateSetter<T> = useCallback(
+    (setter) => {
+      const oldValue = getSnapshot();
+      const newValue = typeof setter === "function" ? setter(oldValue) : setter;
+
+      if (newValue === oldValue) {
+        return;
+      }
+
+      const oldValueString = JSON.stringify(oldValue);
+      const newValueString = JSON.stringify(newValue);
+
+      // This fires a storage event on every browser tab other than the current one
+      localStorage.setItem(key, newValueString);
+
+      // This fires a storage event on the current browser tab
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key,
+          oldValue: oldValueString,
+          newValue: newValueString,
+        }),
+      );
+    },
+    [key, getSnapshot],
+  );
+
+  const deleteValue = useCallback(() => {
+    const oldValue = getSnapshot();
+
+    // This fires a storage event on every browser tab other than the current one
+    localStorage.removeItem(key);
+
+    // This fires a storage event on the current browser tab
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key,
+        oldValue: JSON.stringify(oldValue),
+      }),
+    );
+  }, [key, getSnapshot]);
+
+  return [value, setValue, deleteValue] as const;
 }
