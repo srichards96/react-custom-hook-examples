@@ -1,43 +1,61 @@
 import { beforeEach, describe, expect, it, test } from "vitest";
 import {
-  useLocalStorageState,
-  type UseLocalStorageStateProps,
-} from "./use-local-storage-state";
+  useStorageState,
+  type UseStorageStateProps,
+} from "./use-storage-state";
 import { renderHook } from "@testing-library/react";
 import z from "zod";
 import { act } from "react";
 
-describe("useLocalStorageState", () => {
+describe("useStorageState", () => {
   beforeEach(() => {
     localStorage.clear();
+    sessionStorage.clear();
   });
 
-  it("should return `defaultValue` if no value with `key` exists in localStorage", () => {
+  it("should return `defaultValue` if no value with `key` exists in the `storageApi`", () => {
     const key = "key";
     const defaultValue = 10;
 
     const { result } = renderHook(
-      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
-        useLocalStorageState(props),
+      (props: UseStorageStateProps<number> = { key, defaultValue }) =>
+        useStorageState(props),
     );
 
     const [value] = result.current;
     expect(value).toBe(defaultValue);
   });
 
-  it("should return value at `key` if it exists in localStorage", () => {
+  it("should return value at `key` if it exists in the `storageApi`", () => {
     const key = "key";
     const defaultValue = 10;
 
+    // localStorage (default)
     localStorage.setItem(key, JSON.stringify(20));
 
-    const { result } = renderHook(
-      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
-        useLocalStorageState(props),
+    const { result: localStorageResult } = renderHook(
+      (props: UseStorageStateProps<number> = { key, defaultValue }) =>
+        useStorageState(props),
     );
 
-    const [value] = result.current;
-    expect(value).toBe(20);
+    const [localStorageValue] = localStorageResult.current;
+    expect(localStorageValue).toBe(20);
+
+    // sessionStorage
+    sessionStorage.setItem(key, JSON.stringify(30));
+
+    const { result: sessionStorageResult } = renderHook(
+      (
+        props: UseStorageStateProps<number> = {
+          key,
+          defaultValue,
+          storageApi: sessionStorage,
+        },
+      ) => useStorageState(props),
+    );
+
+    const [sessionStorageValue] = sessionStorageResult.current;
+    expect(sessionStorageValue).toBe(30);
   });
 
   // This case shows why you should provide a `parseFn`...
@@ -48,8 +66,8 @@ describe("useLocalStorageState", () => {
     localStorage.setItem(key, JSON.stringify("not a number..."));
 
     const { result } = renderHook(
-      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
-        useLocalStorageState(props),
+      (props: UseStorageStateProps<number> = { key, defaultValue }) =>
+        useStorageState(props),
     );
 
     // `value` is a string, even though TypeScript thinks it's a number...
@@ -67,12 +85,12 @@ describe("useLocalStorageState", () => {
 
     const { result } = renderHook(
       (
-        props: UseLocalStorageStateProps<number> = {
+        props: UseStorageStateProps<number> = {
           key,
           defaultValue,
           parseFn: schema.parse,
         },
-      ) => useLocalStorageState(props),
+      ) => useStorageState(props),
     );
 
     // Value at key made the `parseFn` throw, so `defaultValue` was returned instead
@@ -88,8 +106,8 @@ describe("useLocalStorageState", () => {
     localStorage.setItem(key, "{{ a: 10 }");
 
     const { result } = renderHook(
-      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
-        useLocalStorageState(props),
+      (props: UseStorageStateProps<number> = { key, defaultValue }) =>
+        useStorageState(props),
     );
 
     // Value at key was malformed JSON, so `defaultValue` should be returned
@@ -113,11 +131,11 @@ describe("useLocalStorageState", () => {
 
     const { result: result1 } = renderHook(
       (
-        props: UseLocalStorageStateProps<Obj> = {
+        props: UseStorageStateProps<Obj> = {
           key: keyObj,
           defaultValue: defaultValueObj,
         },
-      ) => useLocalStorageState(props),
+      ) => useStorageState(props),
     );
 
     // Value at key was an object, so `defaultValue` should be returned
@@ -126,11 +144,11 @@ describe("useLocalStorageState", () => {
 
     const { result: result2 } = renderHook(
       (
-        props: UseLocalStorageStateProps<Arr> = {
+        props: UseStorageStateProps<Arr> = {
           key: keyArr,
           defaultValue: defaultValueArr,
         },
-      ) => useLocalStorageState(props),
+      ) => useStorageState(props),
     );
 
     // Value at key was an array, so `defaultValue` should be returned
@@ -167,12 +185,12 @@ describe("useLocalStorageState", () => {
 
     const { result: result1 } = renderHook(
       (
-        props: UseLocalStorageStateProps<Obj> = {
+        props: UseStorageStateProps<Obj> = {
           key: keyObj,
           defaultValue: defaultValueObj,
           equalityComparer: equalityComparerObj,
         },
-      ) => useLocalStorageState(props),
+      ) => useStorageState(props),
     );
 
     // Value at key was an object, so `defaultValue` should be returned
@@ -182,12 +200,12 @@ describe("useLocalStorageState", () => {
 
     const { result: result2 } = renderHook(
       (
-        props: UseLocalStorageStateProps<Arr> = {
+        props: UseStorageStateProps<Arr> = {
           key: keyArr,
           defaultValue: defaultValueArr,
           equalityComparer: equalityComparerArr,
         },
-      ) => useLocalStorageState(props),
+      ) => useStorageState(props),
     );
 
     // Value at key was an array, so `defaultValue` should be returned
@@ -196,7 +214,7 @@ describe("useLocalStorageState", () => {
     expect(value2).not.toBe(valueAtKeyArr);
   });
 
-  it("should update value (including in localStorage) when `setValue` is called", () => {
+  it("should update value (including in the `storageApi`) when `setValue` is called", () => {
     type Obj = { a: number; b: number };
     const keyPrimitive = "keyPrimitve";
     const defaultValuePrimitve = 10;
@@ -204,11 +222,11 @@ describe("useLocalStorageState", () => {
 
     const { result: resultPrimitive } = renderHook(
       (
-        props: UseLocalStorageStateProps<number> = {
+        props: UseStorageStateProps<number> = {
           key: keyPrimitive,
           defaultValue: defaultValuePrimitve,
         },
-      ) => useLocalStorageState(props),
+      ) => useStorageState(props),
     );
 
     let [valuePrimitive, setValuePrimitive] = resultPrimitive.current;
@@ -220,7 +238,7 @@ describe("useLocalStorageState", () => {
     });
     [valuePrimitive, setValuePrimitive] = resultPrimitive.current;
 
-    // Should have set value, both in the hook and in localStorage
+    // Should have set value, both in the hook and in the `storageApi`
     expect(valuePrimitive).toBe(newValuePrimitive);
     expect(JSON.parse(localStorage.getItem(keyPrimitive)!)).toBe(
       newValuePrimitive,
@@ -235,12 +253,12 @@ describe("useLocalStorageState", () => {
 
     const { result: resultObj } = renderHook(
       (
-        props: UseLocalStorageStateProps<Obj> = {
+        props: UseStorageStateProps<Obj> = {
           key: keyObj,
           defaultValue: defaultValueObj,
           equalityComparer: equalityComparerObj,
         },
-      ) => useLocalStorageState(props),
+      ) => useStorageState(props),
     );
 
     let [valueObj, setValueObj] = resultObj.current;
@@ -252,7 +270,7 @@ describe("useLocalStorageState", () => {
     });
     [valueObj, setValueObj] = resultObj.current;
 
-    // Should have set value, both in the hook and in localStorage
+    // Should have set value, both in the hook and in the `storageApi`
     expect(valueObj).toEqual(newValueObj);
     expect(JSON.parse(localStorage.getItem(keyObj)!)).toEqual(newValueObj);
 
@@ -276,12 +294,12 @@ describe("useLocalStorageState", () => {
 
     const { result: resultArr } = renderHook(
       (
-        props: UseLocalStorageStateProps<Arr> = {
+        props: UseStorageStateProps<Arr> = {
           key: keyArr,
           defaultValue: defaultValueArr,
           equalityComparer: equalityComparerArr,
         },
-      ) => useLocalStorageState(props),
+      ) => useStorageState(props),
     );
 
     let [valueArr, setValueArr] = resultArr.current;
@@ -293,12 +311,12 @@ describe("useLocalStorageState", () => {
     });
     [valueArr, setValueArr] = resultArr.current;
 
-    // Should have set value, both in the hook and in localStorage
+    // Should have set value, both in the hook and in the `storageApi`
     expect(valueArr).toEqual(newValueArr);
     expect(JSON.parse(localStorage.getItem(keyArr)!)).toEqual(newValueArr);
   });
 
-  it("should reset value to `defaultValue` (and delete key from localStorage) when `deleteValue` is called", () => {
+  it("should reset value to `defaultValue` (and delete key from the `storageApi`) when `deleteValue` is called", () => {
     const key = "key";
     const defaultValue = 10;
     const valueAtKey = 50;
@@ -306,8 +324,8 @@ describe("useLocalStorageState", () => {
     localStorage.setItem(key, JSON.stringify(valueAtKey));
 
     const { result } = renderHook(
-      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
-        useLocalStorageState(props),
+      (props: UseStorageStateProps<number> = { key, defaultValue }) =>
+        useStorageState(props),
     );
 
     // Value should be value at key, which should exist
@@ -332,16 +350,16 @@ describe("useLocalStorageState", () => {
     const valueAtKey = 50;
 
     const { result: result1 } = renderHook(
-      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
-        useLocalStorageState(props),
+      (props: UseStorageStateProps<number> = { key, defaultValue }) =>
+        useStorageState(props),
     );
     const { result: result2 } = renderHook(
-      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
-        useLocalStorageState(props),
+      (props: UseStorageStateProps<number> = { key, defaultValue }) =>
+        useStorageState(props),
     );
     const { result: result3 } = renderHook(
-      (props: UseLocalStorageStateProps<number> = { key, defaultValue }) =>
-        useLocalStorageState(props),
+      (props: UseStorageStateProps<number> = { key, defaultValue }) =>
+        useStorageState(props),
     );
 
     // All 3 should start with `defaultValue`
@@ -382,9 +400,8 @@ describe("useLocalStorageState", () => {
     localStorage.setItem(key2, JSON.stringify(value2));
 
     const { result, rerender } = renderHook(
-      (
-        props: UseLocalStorageStateProps<number> = { key: key1, defaultValue },
-      ) => useLocalStorageState(props),
+      (props: UseStorageStateProps<number> = { key: key1, defaultValue }) =>
+        useStorageState(props),
     );
 
     // Starts on value at `key2`
@@ -416,11 +433,11 @@ describe("useLocalStorageState", () => {
 
     const { result, rerender } = renderHook(
       (
-        props: UseLocalStorageStateProps<number> = {
+        props: UseStorageStateProps<number> = {
           key,
           defaultValue: defaultValue1,
         },
-      ) => useLocalStorageState(props),
+      ) => useStorageState(props),
     );
 
     // Starts on `defaultValue1`, since no value exists at key
@@ -456,12 +473,12 @@ describe("useLocalStorageState", () => {
 
     const { result, rerender } = renderHook(
       (
-        props: UseLocalStorageStateProps<number> = {
+        props: UseStorageStateProps<number> = {
           key,
           defaultValue,
           parseFn: schema1.parse,
         },
-      ) => useLocalStorageState(props),
+      ) => useStorageState(props),
     );
 
     // Starts on `defaultValue`, since value at key fails schema parse
@@ -479,7 +496,35 @@ describe("useLocalStorageState", () => {
     expect(value).toBe(defaultValue);
   });
 
-  it("should return a memoized functions", () => {
+  it("should attempt to read value at `key` in new `sessionApi` when `sessionApi` changes", () => {
+    const key = "key";
+    const defaultValue = 10;
+
+    const localStorageValue = 20;
+    const sessionStorageValue = 30;
+
+    localStorage.setItem(key, JSON.stringify(localStorageValue));
+    sessionStorage.setItem(key, JSON.stringify(sessionStorageValue));
+
+    const { result, rerender } = renderHook(
+      (
+        props: UseStorageStateProps<number> = {
+          key,
+          defaultValue,
+          storageApi: localStorage,
+        },
+      ) => useStorageState(props),
+    );
+
+    let [value] = result.current;
+    expect(value).toBe(localStorageValue);
+
+    rerender({ key, defaultValue, storageApi: sessionStorage });
+    [value] = result.current;
+    expect(value).toBe(sessionStorageValue);
+  });
+
+  it("should return memoized functions", () => {
     type Obj = { a: number; b: number };
     const key1 = "key1";
     const key2 = "key2";
@@ -492,13 +537,14 @@ describe("useLocalStorageState", () => {
 
     const { result, rerender } = renderHook(
       (
-        props: UseLocalStorageStateProps<Obj> = {
+        props: UseStorageStateProps<Obj> = {
           key: key1,
           defaultValue: defaultValue1,
           parseFn: schema1.parse,
           equalityComparer: equalityComparer1,
+          storageApi: localStorage,
         },
-      ) => useLocalStorageState(props),
+      ) => useStorageState(props),
     );
 
     let [, prevSetValue, prevDeleteValue] = result.current;
@@ -510,6 +556,7 @@ describe("useLocalStorageState", () => {
       defaultValue: defaultValue1,
       parseFn: schema1.parse,
       equalityComparer: equalityComparer1,
+      storageApi: localStorage,
     });
     [, setValue, deleteValue] = result.current;
     expect(setValue).toBe(prevSetValue);
@@ -522,6 +569,7 @@ describe("useLocalStorageState", () => {
       defaultValue: defaultValue1,
       parseFn: schema1.parse,
       equalityComparer: equalityComparer1,
+      storageApi: localStorage,
     });
     [, setValue, deleteValue] = result.current;
     expect(setValue).not.toBe(prevSetValue);
@@ -534,6 +582,7 @@ describe("useLocalStorageState", () => {
       defaultValue: defaultValue2,
       parseFn: schema1.parse,
       equalityComparer: equalityComparer1,
+      storageApi: localStorage,
     });
     [, setValue, deleteValue] = result.current;
     expect(setValue).not.toBe(prevSetValue);
@@ -546,18 +595,33 @@ describe("useLocalStorageState", () => {
       defaultValue: defaultValue2,
       parseFn: schema2.parse,
       equalityComparer: equalityComparer1,
+      storageApi: localStorage,
     });
     [, setValue, deleteValue] = result.current;
     expect(setValue).not.toBe(prevSetValue);
     expect(deleteValue).not.toBe(prevDeleteValue);
     [, prevSetValue, prevDeleteValue] = result.current;
 
-    // Rerender with different parseFn. Changes
+    // Rerender with different `equalityComparer`. Changes
     rerender({
       key: key2,
       defaultValue: defaultValue2,
       parseFn: schema2.parse,
       equalityComparer: equalityComparer2,
+      storageApi: localStorage,
+    });
+    [, setValue, deleteValue] = result.current;
+    expect(setValue).not.toBe(prevSetValue);
+    expect(deleteValue).not.toBe(prevDeleteValue);
+    [, prevSetValue, prevDeleteValue] = result.current;
+
+    // Rerender with different `storageApi`. Changes
+    rerender({
+      key: key2,
+      defaultValue: defaultValue2,
+      parseFn: schema2.parse,
+      equalityComparer: equalityComparer2,
+      storageApi: sessionStorage,
     });
     [, setValue, deleteValue] = result.current;
     expect(setValue).not.toBe(prevSetValue);

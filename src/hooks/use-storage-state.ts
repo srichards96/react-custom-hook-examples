@@ -22,8 +22,9 @@ const createSubscribeFn = (key: string) => (callback: () => void) => {
 const createGetSnapshotFn = <T extends Serializable>(
   key: string,
   defaultValue: T,
-  parseFn: ParseFn<T> = (x) => x as T,
-  equalityComparer: EqualityComparer<T> = Object.is,
+  parseFn: ParseFn<T>,
+  equalityComparer: EqualityComparer<T>,
+  storageApi: Storage,
 ): (() => T) => {
   // Keep track of the latest "new" value.
   // If T is an object type, this keeps track of the latest "new" value according to the `equalityComparer`
@@ -31,7 +32,7 @@ const createGetSnapshotFn = <T extends Serializable>(
   let latestNewValue = defaultValue;
 
   return () => {
-    const valueString = localStorage.getItem(key);
+    const valueString = storageApi.getItem(key);
     if (valueString == null) {
       return defaultValue;
     }
@@ -58,26 +59,34 @@ const createGetSnapshotFn = <T extends Serializable>(
   };
 };
 
-export type UseLocalStorageStateProps<T extends Serializable> = {
+export type UseStorageStateProps<T extends Serializable> = {
   key: string;
   defaultValue: T;
   parseFn?: ParseFn<T>;
   equalityComparer?: EqualityComparer<T>;
+  storageApi?: Storage;
 };
 
-export function useLocalStorageState<T extends Serializable>({
+export function useStorageState<T extends Serializable>({
   key,
   defaultValue,
-  parseFn,
-  equalityComparer,
-}: UseLocalStorageStateProps<T>) {
+  parseFn = (x) => x as T,
+  equalityComparer = Object.is,
+  storageApi = localStorage,
+}: UseStorageStateProps<T>) {
   const subscribe = useMemo(() => {
     return createSubscribeFn(key);
   }, [key]);
 
   const getSnapshot = useMemo(() => {
-    return createGetSnapshotFn(key, defaultValue, parseFn, equalityComparer);
-  }, [key, defaultValue, parseFn, equalityComparer]);
+    return createGetSnapshotFn(
+      key,
+      defaultValue,
+      parseFn,
+      equalityComparer,
+      storageApi,
+    );
+  }, [key, defaultValue, parseFn, equalityComparer, storageApi]);
 
   // `subscribe` and `getSnapshot` need to have stable references
   const value = useSyncExternalStore(subscribe, getSnapshot);
@@ -95,7 +104,7 @@ export function useLocalStorageState<T extends Serializable>({
       const newValueString = JSON.stringify(newValue);
 
       // This fires a storage event on every browser tab other than the current one
-      localStorage.setItem(key, newValueString);
+      storageApi.setItem(key, newValueString);
 
       // This fires a storage event on the current browser tab
       window.dispatchEvent(
@@ -106,14 +115,14 @@ export function useLocalStorageState<T extends Serializable>({
         }),
       );
     },
-    [key, getSnapshot],
+    [key, getSnapshot, storageApi],
   );
 
   const deleteValue = useCallback(() => {
     const oldValue = getSnapshot();
 
     // This fires a storage event on every browser tab other than the current one
-    localStorage.removeItem(key);
+    storageApi.removeItem(key);
 
     // This fires a storage event on the current browser tab
     window.dispatchEvent(
@@ -122,7 +131,7 @@ export function useLocalStorageState<T extends Serializable>({
         oldValue: JSON.stringify(oldValue),
       }),
     );
-  }, [key, getSnapshot]);
+  }, [key, getSnapshot, storageApi]);
 
   return [value, setValue, deleteValue] as const;
 }
