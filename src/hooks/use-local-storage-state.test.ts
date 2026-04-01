@@ -575,7 +575,7 @@ describe("useLocalStorageState", () => {
 
     // Call `deleteValue`. No change
     act(() => {
-      setValue({ a: 50, b: 50 });
+      deleteValue();
     });
     [, setValue, deleteValue] = result.current;
     expect(setValue).toBe(prevSetValue);
