@@ -10,11 +10,17 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HooksUseStorageStateRouteImport } from './routes/hooks/use-storage-state'
 import { Route as HooksUseDebounceRouteImport } from './routes/hooks/use-debounce'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HooksUseStorageStateRoute = HooksUseStorageStateRouteImport.update({
+  id: '/hooks/use-storage-state',
+  path: '/hooks/use-storage-state',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HooksUseDebounceRoute = HooksUseDebounceRouteImport.update({
@@ -26,27 +32,31 @@ const HooksUseDebounceRoute = HooksUseDebounceRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/hooks/use-debounce': typeof HooksUseDebounceRoute
+  '/hooks/use-storage-state': typeof HooksUseStorageStateRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/hooks/use-debounce': typeof HooksUseDebounceRoute
+  '/hooks/use-storage-state': typeof HooksUseStorageStateRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/hooks/use-debounce': typeof HooksUseDebounceRoute
+  '/hooks/use-storage-state': typeof HooksUseStorageStateRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/hooks/use-debounce'
+  fullPaths: '/' | '/hooks/use-debounce' | '/hooks/use-storage-state'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/hooks/use-debounce'
-  id: '__root__' | '/' | '/hooks/use-debounce'
+  to: '/' | '/hooks/use-debounce' | '/hooks/use-storage-state'
+  id: '__root__' | '/' | '/hooks/use-debounce' | '/hooks/use-storage-state'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HooksUseDebounceRoute: typeof HooksUseDebounceRoute
+  HooksUseStorageStateRoute: typeof HooksUseStorageStateRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -56,6 +66,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hooks/use-storage-state': {
+      id: '/hooks/use-storage-state'
+      path: '/hooks/use-storage-state'
+      fullPath: '/hooks/use-storage-state'
+      preLoaderRoute: typeof HooksUseStorageStateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hooks/use-debounce': {
@@ -71,6 +88,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HooksUseDebounceRoute: HooksUseDebounceRoute,
+  HooksUseStorageStateRoute: HooksUseStorageStateRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,4 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  Heading1,
+  linkClassNames,
+  ListItem,
+  UnorderedList,
+} from "../components/ui/typography";
+import { PageWrapper } from "../components/layout/page-wrapper";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -6,8 +13,19 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   return (
-    <div className="p-2">
-      <h3>Welcome Home!</h3>
-    </div>
+    <PageWrapper className="container mx-auto p-4">
+      <Heading1>Index</Heading1>
+
+      <UnorderedList>
+        <ListItem>hooks/</ListItem>
+        <UnorderedList>
+          <ListItem>
+            <Link to="/hooks/use-debounce" className={linkClassNames}>
+              use-debounce
+            </Link>
+          </ListItem>
+        </UnorderedList>
+      </UnorderedList>
+    </PageWrapper>
   );
 }

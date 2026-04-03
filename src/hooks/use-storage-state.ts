@@ -5,6 +5,8 @@ type ParseFn<T> = (value: unknown) => T;
 type EqualityComparer<T> = (a: T, b: T) => boolean;
 type StateSetter<T> = (valueOrFunction: T | ((oldValue: T) => T)) => void;
 
+const defaultEqualityComparer = Object.is;
+
 const createSubscribeFn = (key: string) => (callback: () => void) => {
   const onStorage = (e: StorageEvent) => {
     if (e.key === key) {
@@ -42,7 +44,10 @@ const createGetSnapshotFn = <T extends Serializable>(
       // Object types will cause a "new" reference to be created on every run.
       // So a custom `equalityComparer` must be provided to determine if it is actually "new" or not.
       // If one wasn't provided and an object type was parsed, fallback to `defaultValue`
-      if (typeof value === "object" && equalityComparer === Object.is) {
+      if (
+        typeof value === "object" &&
+        equalityComparer === defaultEqualityComparer
+      ) {
         return defaultValue;
       }
 
@@ -71,7 +76,7 @@ export function useStorageState<T extends Serializable>({
   key,
   defaultValue,
   parseFn = (x) => x as T,
-  equalityComparer = Object.is,
+  equalityComparer = defaultEqualityComparer,
   storageApi = localStorage,
 }: UseStorageStateProps<T>) {
   const subscribe = useMemo(() => {
