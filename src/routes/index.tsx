@@ -20,6 +20,11 @@ function Index() {
         <ListItem>hooks/</ListItem>
         <UnorderedList>
           <ListItem>
+            <Link to="/hooks/use-storage-state" className={linkClassNames}>
+              use-storage-state
+            </Link>
+          </ListItem>
+          <ListItem>
             <Link to="/hooks/use-debounce" className={linkClassNames}>
               use-debounce
             </Link>

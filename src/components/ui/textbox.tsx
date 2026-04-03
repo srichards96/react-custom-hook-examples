@@ -1,10 +1,12 @@
 import { useId } from "react";
 import { cn } from "../../utils/cn";
 
-type TextboxProps = React.DetailedHTMLProps<
+type InputProps = React.DetailedHTMLProps<
   React.InputHTMLAttributes<HTMLInputElement>,
   HTMLInputElement
-> & {
+>;
+
+type TextboxProps = InputProps & {
   label?: string;
   error?: string;
 };
