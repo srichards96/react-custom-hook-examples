@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HooksUseTimeoutRouteImport } from './routes/hooks/use-timeout'
 import { Route as HooksUseStorageStateRouteImport } from './routes/hooks/use-storage-state'
+import { Route as HooksUseIntervalRouteImport } from './routes/hooks/use-interval'
 import { Route as HooksUseDebounceRouteImport } from './routes/hooks/use-debounce'
 
 const IndexRoute = IndexRouteImport.update({
@@ -18,9 +20,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HooksUseTimeoutRoute = HooksUseTimeoutRouteImport.update({
+  id: '/hooks/use-timeout',
+  path: '/hooks/use-timeout',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HooksUseStorageStateRoute = HooksUseStorageStateRouteImport.update({
   id: '/hooks/use-storage-state',
   path: '/hooks/use-storage-state',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HooksUseIntervalRoute = HooksUseIntervalRouteImport.update({
+  id: '/hooks/use-interval',
+  path: '/hooks/use-interval',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HooksUseDebounceRoute = HooksUseDebounceRouteImport.update({
@@ -32,31 +44,55 @@ const HooksUseDebounceRoute = HooksUseDebounceRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/hooks/use-debounce': typeof HooksUseDebounceRoute
+  '/hooks/use-interval': typeof HooksUseIntervalRoute
   '/hooks/use-storage-state': typeof HooksUseStorageStateRoute
+  '/hooks/use-timeout': typeof HooksUseTimeoutRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/hooks/use-debounce': typeof HooksUseDebounceRoute
+  '/hooks/use-interval': typeof HooksUseIntervalRoute
   '/hooks/use-storage-state': typeof HooksUseStorageStateRoute
+  '/hooks/use-timeout': typeof HooksUseTimeoutRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/hooks/use-debounce': typeof HooksUseDebounceRoute
+  '/hooks/use-interval': typeof HooksUseIntervalRoute
   '/hooks/use-storage-state': typeof HooksUseStorageStateRoute
+  '/hooks/use-timeout': typeof HooksUseTimeoutRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/hooks/use-debounce' | '/hooks/use-storage-state'
+  fullPaths:
+    | '/'
+    | '/hooks/use-debounce'
+    | '/hooks/use-interval'
+    | '/hooks/use-storage-state'
+    | '/hooks/use-timeout'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/hooks/use-debounce' | '/hooks/use-storage-state'
-  id: '__root__' | '/' | '/hooks/use-debounce' | '/hooks/use-storage-state'
+  to:
+    | '/'
+    | '/hooks/use-debounce'
+    | '/hooks/use-interval'
+    | '/hooks/use-storage-state'
+    | '/hooks/use-timeout'
+  id:
+    | '__root__'
+    | '/'
+    | '/hooks/use-debounce'
+    | '/hooks/use-interval'
+    | '/hooks/use-storage-state'
+    | '/hooks/use-timeout'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   HooksUseDebounceRoute: typeof HooksUseDebounceRoute
+  HooksUseIntervalRoute: typeof HooksUseIntervalRoute
   HooksUseStorageStateRoute: typeof HooksUseStorageStateRoute
+  HooksUseTimeoutRoute: typeof HooksUseTimeoutRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -68,11 +104,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hooks/use-timeout': {
+      id: '/hooks/use-timeout'
+      path: '/hooks/use-timeout'
+      fullPath: '/hooks/use-timeout'
+      preLoaderRoute: typeof HooksUseTimeoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/hooks/use-storage-state': {
       id: '/hooks/use-storage-state'
       path: '/hooks/use-storage-state'
       fullPath: '/hooks/use-storage-state'
       preLoaderRoute: typeof HooksUseStorageStateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hooks/use-interval': {
+      id: '/hooks/use-interval'
+      path: '/hooks/use-interval'
+      fullPath: '/hooks/use-interval'
+      preLoaderRoute: typeof HooksUseIntervalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hooks/use-debounce': {
@@ -88,7 +138,9 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   HooksUseDebounceRoute: HooksUseDebounceRoute,
+  HooksUseIntervalRoute: HooksUseIntervalRoute,
   HooksUseStorageStateRoute: HooksUseStorageStateRoute,
+  HooksUseTimeoutRoute: HooksUseTimeoutRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
