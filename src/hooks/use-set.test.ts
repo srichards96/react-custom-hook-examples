@@ -233,6 +233,8 @@ describe("useSet", () => {
     const { result } = renderHook((props: UseSetProps<number> = [undefined]) =>
       useSet(...props),
     );
+    let prevResult;
+
     type Result = typeof result.current;
 
     // Expected changes for a mutative action (`add`/`delete`/`clear`/`setValue`)
@@ -258,12 +260,13 @@ describe("useSet", () => {
       expect(curr.clear).toBe(prev.clear);
     };
 
-    let prevResult = result.current;
+    // Mutative actions...
+    prevResult = result.current;
     act(() => result.current.add(1));
     hasExpectedChangesForMutate(result.current, prevResult);
 
     prevResult = result.current;
-    act(() => result.current.add(1));
+    act(() => result.current.delete(1));
     hasExpectedChangesForMutate(result.current, prevResult);
 
     prevResult = result.current;
@@ -274,7 +277,7 @@ describe("useSet", () => {
     act(() => result.current.setValue(new Set()));
     hasExpectedChangesForMutate(result.current, prevResult);
 
-    // Calling `has` should change nothing
+    // Non-mutative actions...
     prevResult = result.current;
     act(() => result.current.has(1));
     hasNoChanges(result.current, prevResult);
