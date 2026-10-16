@@ -315,7 +315,12 @@ describe("useMap", () => {
 
     type Result = typeof result.current;
 
-    // Expected changes for a mutative action (`set`/`delete`/`clear`/`setValue`)
+    // Expected changes for a mutative action
+    // - `set` new key-value-pair
+    // - `set` existing key-value-pair with new value
+    // - `delete` existing key-value-pair
+    // - `clear` with size > 0
+    // - `setValue` with new map object
     const hasExpectedChangesForMutate = (curr: Result, prev: Result) => {
       expect(curr).not.toBe(prev);
       expect(curr.value).not.toBe(prev.value);
@@ -328,7 +333,13 @@ describe("useMap", () => {
       expect(curr.clear).toBe(prev.clear);
     };
 
-    // Expected changes (none...) for a non-mutative action (`get`/`has`)
+    // Expected changes (none...) for a non-mutative action
+    // - `get`
+    // - `has`
+    // - `set` existing key-value-pair with same value
+    // - `delete` non-existent key-value-pair
+    // - `clear` with size === 0
+    // - `setValue` with current map object
     const hasNoChanges = (curr: Result, prev: Result) => {
       expect(curr).toBe(prev);
       expect(curr.value).toBe(prev.value);
@@ -341,29 +352,67 @@ describe("useMap", () => {
     };
 
     // Mutative actions...
+    // `set` new
+    act(() => result.current.setValue(new Map()));
     prevResult = result.current;
     act(() => result.current.set(1, 10));
     hasExpectedChangesForMutate(result.current, prevResult);
 
+    // `set` existing with new value
+    act(() => result.current.setValue(new Map([[1, 10]])));
+    prevResult = result.current;
+    act(() => result.current.set(1, 100));
+    hasExpectedChangesForMutate(result.current, prevResult);
+
+    // `delete` existing
+    act(() => result.current.setValue(new Map([[1, 10]])));
     prevResult = result.current;
     act(() => result.current.delete(1));
     hasExpectedChangesForMutate(result.current, prevResult);
 
+    // `clear` with size > 0
+    act(() => result.current.setValue(new Map([[1, 10]])));
     prevResult = result.current;
     act(() => result.current.clear());
     hasExpectedChangesForMutate(result.current, prevResult);
 
+    // `setValue` with new map
     prevResult = result.current;
     act(() => result.current.setValue(new Map()));
     hasExpectedChangesForMutate(result.current, prevResult);
 
     // Non-mutative actions...
+    // `get`
     prevResult = result.current;
     act(() => result.current.get(1));
     hasNoChanges(result.current, prevResult);
 
+    // `has`
     prevResult = result.current;
     act(() => result.current.has(1));
+    hasNoChanges(result.current, prevResult);
+
+    // `set` existing with same value
+    act(() => result.current.setValue(new Map([[1, 10]])));
+    prevResult = result.current;
+    act(() => result.current.set(1, 10));
+    hasNoChanges(result.current, prevResult);
+
+    // `delete` non-existent
+    act(() => result.current.setValue(new Map()));
+    prevResult = result.current;
+    act(() => result.current.delete(1));
+    hasNoChanges(result.current, prevResult);
+
+    // `clear` with size === 0
+    act(() => result.current.setValue(new Map()));
+    prevResult = result.current;
+    act(() => result.current.clear());
+    hasNoChanges(result.current, prevResult);
+
+    // `setValue` with current map
+    prevResult = result.current;
+    act(() => result.current.setValue((x) => x));
     hasNoChanges(result.current, prevResult);
   });
 });

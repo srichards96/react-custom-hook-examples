@@ -14,6 +14,11 @@ export function useSet<T extends Primitive>(
 
   const add = useCallback((val: T) => {
     setValue((old) => {
+      // If value already in set, do not create a "new" set
+      if (old.has(val)) {
+        return old;
+      }
+
       const next = new Set(old);
       next.add(val);
       return next;
@@ -22,6 +27,11 @@ export function useSet<T extends Primitive>(
 
   const deleteFn = useCallback((val: T) => {
     setValue((old) => {
+      // If value not in set, do not create a "new" set
+      if (!old.has(val)) {
+        return old;
+      }
+
       const next = new Set(old);
       next.delete(val);
       return next;
@@ -29,7 +39,14 @@ export function useSet<T extends Primitive>(
   }, []);
 
   const clear = useCallback(() => {
-    setValue(new Set());
+    setValue((old) => {
+      // If no values to clear, do not create a "new" set
+      if (old.size === 0) {
+        return old;
+      }
+
+      return new Set();
+    });
   }, []);
 
   const has = useCallback((val: T) => value.has(val), [value]);

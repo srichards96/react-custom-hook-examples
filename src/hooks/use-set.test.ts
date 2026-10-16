@@ -237,7 +237,11 @@ describe("useSet", () => {
 
     type Result = typeof result.current;
 
-    // Expected changes for a mutative action (`add`/`delete`/`clear`/`setValue`)
+    // Expected changes for a mutative action:
+    // - `add` new value to set
+    // - `delete` existing value from set
+    // - `clear` when size > 0
+    // - `setValue` with new set object
     const hasExpectedChangesForMutate = (curr: Result, prev: Result) => {
       expect(curr).not.toBe(prev);
       expect(curr.value).not.toBe(prev.value);
@@ -249,7 +253,12 @@ describe("useSet", () => {
       expect(curr.clear).toBe(prev.clear);
     };
 
-    // Expected changes (none...) for a non-mutative action (`has`)
+    // Expected changes (none...) for a non-mutative action
+    // - `has`
+    // - `add` existing value in set
+    // - `delete` non-existent value from set
+    // - `clear` when size === 0
+    // - `setValue` with current set object
     const hasNoChanges = (curr: Result, prev: Result) => {
       expect(curr).toBe(prev);
       expect(curr.value).toBe(prev.value);
@@ -261,25 +270,56 @@ describe("useSet", () => {
     };
 
     // Mutative actions...
+    // - `add` new
+    act(() => result.current.setValue(new Set()));
     prevResult = result.current;
     act(() => result.current.add(1));
     hasExpectedChangesForMutate(result.current, prevResult);
 
+    // - `delete` existing
+    act(() => result.current.setValue(new Set([1])));
     prevResult = result.current;
     act(() => result.current.delete(1));
     hasExpectedChangesForMutate(result.current, prevResult);
 
+    // - `clear` with size > 0
+    act(() => result.current.setValue(new Set([1])));
     prevResult = result.current;
     act(() => result.current.clear());
     hasExpectedChangesForMutate(result.current, prevResult);
 
+    // - `setValue` with new set
     prevResult = result.current;
     act(() => result.current.setValue(new Set()));
     hasExpectedChangesForMutate(result.current, prevResult);
 
     // Non-mutative actions...
+    // -`has`
     prevResult = result.current;
     act(() => result.current.has(1));
+    hasNoChanges(result.current, prevResult);
+
+    // - `add` existing value to set
+    act(() => result.current.setValue(new Set([1])));
+    prevResult = result.current;
+    act(() => result.current.add(1));
+    hasNoChanges(result.current, prevResult);
+
+    // - `delete` non-existent value from set
+    act(() => result.current.setValue(new Set()));
+    prevResult = result.current;
+    act(() => result.current.delete(2));
+    hasNoChanges(result.current, prevResult);
+
+    // - `clear` with size === 0
+    act(() => result.current.setValue(new Set()));
+    prevResult = result.current;
+    act(() => result.current.clear());
+    hasNoChanges(result.current, prevResult);
+
+    // - `setValue` with same set
+    prevResult = result.current;
+    act(() => result.current.setValue((x) => x));
     hasNoChanges(result.current, prevResult);
   });
 });

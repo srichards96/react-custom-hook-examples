@@ -25,6 +25,11 @@ export function useMap<TKey extends Primitive, TValue>(
 
   const set = useCallback((key: TKey, val: TValue) => {
     setValue((old) => {
+      // If key-value-pair already in map, do not create a "new" map
+      if (old.get(key) === val) {
+        return old;
+      }
+
       const next = new Map(old);
       next.set(key, val);
       return next;
@@ -33,6 +38,11 @@ export function useMap<TKey extends Primitive, TValue>(
 
   const deleteFn = useCallback((key: TKey) => {
     setValue((old) => {
+      // If key already not in map, do not create a "new" map
+      if (!old.has(key)) {
+        return old;
+      }
+
       const next = new Map(old);
       next.delete(key);
       return next;
@@ -40,7 +50,14 @@ export function useMap<TKey extends Primitive, TValue>(
   }, []);
 
   const clear = useCallback(() => {
-    setValue(new Map());
+    setValue((old) => {
+      // If no key-value-pairs to clear, do not create a "new" map
+      if (old.size === 0) {
+        return old;
+      }
+
+      return new Map();
+    });
   }, []);
 
   const has = useCallback((key: TKey) => value.has(key), [value]);
